@@ -1,28 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-
-import 'screens/sensor_dashboard.dart';
+import 'package:sensora/screens/main_navigation.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const SensoraApp());
+
+  runApp(const AstrolabeApp());
 }
 
-class SensoraApp extends StatelessWidget {
-  const SensoraApp({super.key});
+class AstrolabeApp extends StatelessWidget {
+  const AstrolabeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Sensora',
+      title: 'Astrolabe',
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
       ),
-      home: SensorDashboard(),
+      home: const MainNavigation(),
     );
   }
-}
-
-typedef AstrolabeApp = SensoraApp;
+} 
