@@ -120,6 +120,22 @@ class SensorDashboard extends StatelessWidget {
               _buildRotationCard(),
 
               const SizedBox(height: 28),
+              Obx(
+                    () => _buildValueCard(
+                  icon: Icons.light_mode_rounded,
+                  title: 'Ambient Light',
+                  value: '${controller.light.value.toStringAsFixed(1)} lux',
+                ),
+              ),
+
+              const SizedBox(height: 28),
+              Obx(
+                    () => _buildValueCard(
+                  icon: Icons.sensors_rounded,
+                  title: 'Proximity',
+                  value: controller.proximity.value ? 'Near' : 'Far',
+                ),
+              ),
             ],
           ),
         ),
@@ -130,7 +146,59 @@ class SensorDashboard extends StatelessWidget {
   // ------------------------------------------------------------
   // SECTION TITLE
   // ------------------------------------------------------------
+  Widget _buildValueCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: Colors.blue.withOpacity(0.1),
+              ),
+              child: Icon(icon),
+            ),
 
+            const SizedBox(width: 16),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   Widget _sectionTitle(
     String title,
     String subtitle,

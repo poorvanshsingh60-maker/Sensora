@@ -27,7 +27,8 @@ class SensorController extends GetxController {
   final RxDouble azimuth = 0.0.obs;
   final RxDouble pitch = 0.0.obs;
   final RxDouble roll = 0.0.obs;
-
+  final RxDouble light = 0.0.obs;
+  final RxBool proximity = false.obs;
   // --------------------------------------------------
   // CURRENT SENSOR VALUES
   // --------------------------------------------------
@@ -177,6 +178,13 @@ class SensorController extends GetxController {
         );
         recordingSampleCount.value++;
       }
+    };
+    sensorManager.onLight = (value) {
+      light.value = value;
+    };
+
+    sensorManager.onProximity = (value) {
+      proximity.value = value;
     };
 
     // 4. Magnetometer Listener

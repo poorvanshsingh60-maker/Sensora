@@ -42,6 +42,8 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.6
   intl: ^0.20.3
+  proximity_sensor: ^2.0.0
+  light: ^5.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

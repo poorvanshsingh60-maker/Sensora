@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_rotation_sensor/flutter_rotation_sensor.dart';
+import 'package:light/light.dart';
+import 'package:proximity_sensor/proximity_sensor.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 class SensorManager {
@@ -13,6 +15,9 @@ class SensorManager {
   StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
   StreamSubscription<OrientationEvent>? _orientationSubscription;
 
+  StreamSubscription<int>? _lightSubscription;
+  StreamSubscription<int>? _proximitySubscription;
+
   // --------------------------------------------------
   // CALLBACKS
   // --------------------------------------------------
@@ -21,6 +26,9 @@ class SensorManager {
   Function(GyroscopeEvent)? onGyroscope;
   Function(MagnetometerEvent)? onMagnetometer;
   Function(OrientationEvent)? onOrientation;
+
+  Function(double)? onLight;
+  Function(bool)? onProximity;
 
   // --------------------------------------------------
   // START SENSORS
@@ -50,6 +58,23 @@ class SensorManager {
         RotationSensor.orientationStream.listen((event) {
           onOrientation?.call(event);
         });
+
+    // Light
+    // Light
+    _lightSubscription =
+        Light().lightSensorStream.listen((lux) {
+          onLight?.call(lux.toDouble());
+        });
+
+    // Proximity
+    try {
+      _proximitySubscription =
+          ProximitySensor.events.listen((event) {
+            onProximity?.call(event > 0);
+          });
+    } catch (e) {
+      // Proximity sensor unavailable
+    }
   }
 
   // --------------------------------------------------
@@ -61,5 +86,8 @@ class SensorManager {
     _gyroscopeSubscription?.cancel();
     _magnetometerSubscription?.cancel();
     _orientationSubscription?.cancel();
+
+    _lightSubscription?.cancel();
+    _proximitySubscription?.cancel();
   }
 }
