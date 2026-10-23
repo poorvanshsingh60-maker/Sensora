@@ -7,7 +7,7 @@ class SensorGraph extends StatelessWidget {
   final List<SensorData> data;
   final String title;
 
-  const SensorGraph({
+  const   SensorGraph({
     super.key,
     required this.data,
     required this.title,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sensora/screens/main_navigation.dart';
 
 import 'screens/sensor_dashboard.dart';
 
@@ -19,7 +20,7 @@ class AstrolabeApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
       ),
-      home: SensorDashboard(),
+      home: const MainNavigation(),
     );
   }
 }
