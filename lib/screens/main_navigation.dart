@@ -48,7 +48,7 @@ class _MainNavigationState extends State<MainNavigation> {
           NavigationDestination(
             icon: Icon(Icons.show_chart_outlined),
             selectedIcon: Icon(Icons.show_chart_rounded),
-            label: 'Sensors',
+            label: 'Graphs',
           ),
           NavigationDestination(
             icon: Icon(Icons.handyman_outlined),

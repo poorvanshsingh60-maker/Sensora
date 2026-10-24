@@ -187,11 +187,9 @@ class SensorHistoryScreen extends StatelessWidget {
             children: [
               const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981)),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$format Export Successful',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
+              Text(
+                'Exported Successfully',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
             ],
           ),
@@ -383,10 +381,8 @@ class _SessionCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // Badges for Duration, Points & Sampling Rate
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
+          // Badges for Duration & Point count
+          Row(
             children: [
               _buildBadge(
                 icon: Icons.timer_outlined,
@@ -394,19 +390,13 @@ class _SessionCard extends StatelessWidget {
                 bgColor: const Color(0xFFEEF2FF),
                 textColor: const Color(0xFF4F46E5),
               ),
+              const SizedBox(width: 8),
               _buildBadge(
                 icon: Icons.data_usage_rounded,
                 label: '${session.sampleCount} pts',
                 bgColor: const Color(0xFFF5F3FF),
                 textColor: const Color(0xFF7C3AED),
               ),
-              if (session.samplingRate.isNotEmpty)
-                _buildBadge(
-                  icon: Icons.speed_rounded,
-                  label: session.samplingRate,
-                  bgColor: const Color(0xFFF0FDF4),
-                  textColor: const Color(0xFF15803D),
-                ),
             ],
           ),
 

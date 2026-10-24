@@ -121,6 +121,10 @@ class SensorDashboard extends StatelessWidget {
               _buildRotationCard(),
 
               const SizedBox(height: 28),
+              _sectionTitle(
+                'Light and Proximity Sensor',
+                'Real-Time Readings',
+              ),
               Obx(
                 () => _buildValueCard(
                   icon: Icons.light_mode_rounded,
@@ -137,6 +141,61 @@ class SensorDashboard extends StatelessWidget {
                   value: controller.proximity.value ? 'Near' : 'Far',
                 ),
               ),
+              _sectionTitle(
+                'Shake Detector',
+                'Real-Time Shaked Readings',
+              ),
+              const SizedBox(height: 10,),
+              Obx(
+                    () => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          controller.isShaking.value
+                              ? Icons.vibration
+                              : Icons.phone_android,
+                          size: 32,
+                        ),
+
+                        const SizedBox(width: 16),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Shake Detection',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              Text(
+                                controller.isShaking.value
+                                    ? 'Shake detected!'
+                                    : 'No shake detected',
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Text(
+                          '${controller.shakeCount.value}',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
             ],
           ),
         ),

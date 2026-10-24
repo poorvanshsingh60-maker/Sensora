@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:math' as math;
 import 'package:flutter_rotation_sensor/flutter_rotation_sensor.dart';
 import 'package:light/light.dart';
 import 'package:proximity_sensor/proximity_sensor.dart';
@@ -14,7 +14,10 @@ class SensorManager {
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
   StreamSubscription<OrientationEvent>? _orientationSubscription;
+  double _lastAccelerationMagnitude = 0.0;
+  DateTime? _lastShakeTime;
 
+  Function()? onShake;
   StreamSubscription<int>? _lightSubscription;
   StreamSubscription<int>? _proximitySubscription;
 
@@ -39,6 +42,29 @@ class SensorManager {
     _accelerometerSubscription =
         accelerometerEventStream().listen((event) {
           onAccelerometer?.call(event);
+
+          final magnitude = math.sqrt(
+            event.x * event.x +
+                event.y * event.y +
+                event.z * event.z,
+          );
+
+          final change =
+          (magnitude - _lastAccelerationMagnitude).abs();
+
+          _lastAccelerationMagnitude = magnitude;
+
+          final now = DateTime.now();
+
+          // Prevent multiple shake detections from one shake
+          final canDetectShake =
+              _lastShakeTime == null ||
+                  now.difference(_lastShakeTime!).inMilliseconds > 700;
+
+          if (change > 7.0 && canDetectShake) {
+            _lastShakeTime = now;
+            onShake?.call();
+          }
         });
 
     // Gyroscope
