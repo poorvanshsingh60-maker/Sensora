@@ -135,6 +135,7 @@ class ExportService {
       buffer.writeln('# End Time: ${session.endTime?.toIso8601String() ?? "N/A"}');
       buffer.writeln('# Duration: ${session.formattedDuration} (${session.durationMs} ms)');
       buffer.writeln('# Total Samples: ${records.length}');
+      buffer.writeln('# Sampling Rate: ${session.samplingRate}');
       if (session.sensorTypes.isNotEmpty) {
         buffer.writeln('# Sensors Recorded: ${session.sensorTypes}');
       }
@@ -199,6 +200,7 @@ class ExportService {
           'durationMs': session.durationMs,
           'formattedDuration': session.formattedDuration,
           'sampleCount': records.length,
+          'samplingRate': session.samplingRate,
           'sensorTypes': session.sensorTypes,
         },
         'records': records.map((r) => {

@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -35,7 +35,8 @@ class DatabaseHelper {
             end_time TEXT,
             duration_ms INTEGER NOT NULL DEFAULT 0,
             sample_count INTEGER NOT NULL DEFAULT 0,
-            sensor_types TEXT DEFAULT ''
+            sensor_types TEXT DEFAULT '',
+            sampling_rate TEXT DEFAULT 'Standard (25 Hz)'
           )
         ''');
 
@@ -63,6 +64,11 @@ class DatabaseHelper {
         if (oldVersion < 2) {
           await db.execute(
             'ALTER TABLE sessions ADD COLUMN sensor_types TEXT DEFAULT ""',
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            'ALTER TABLE sessions ADD COLUMN sampling_rate TEXT DEFAULT "Standard (25 Hz)"',
           );
         }
       },
