@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -34,7 +34,8 @@ class DatabaseHelper {
             start_time TEXT NOT NULL,
             end_time TEXT,
             duration_ms INTEGER NOT NULL DEFAULT 0,
-            sample_count INTEGER NOT NULL DEFAULT 0
+            sample_count INTEGER NOT NULL DEFAULT 0,
+            sensor_types TEXT DEFAULT ''
           )
         ''');
 
@@ -57,6 +58,13 @@ class DatabaseHelper {
           CREATE INDEX idx_sensor_records_session_id 
           ON sensor_records (session_id)
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE sessions ADD COLUMN sensor_types TEXT DEFAULT ""',
+          );
+        }
       },
     );
   }

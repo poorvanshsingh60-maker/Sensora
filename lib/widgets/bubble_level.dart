@@ -66,13 +66,13 @@ class BubbleLevel extends StatelessWidget {
           ),
 
           // Horizontal guide
-          Container(
+          const SizedBox(
             width: 180,
             height: 2,
           ),
 
           // Vertical guide
-          Container(
+          const SizedBox(
             width: 2,
             height: 180,
           ),

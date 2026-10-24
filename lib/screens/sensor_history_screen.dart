@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
@@ -197,10 +198,12 @@ class SensorHistoryScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${result.recordCount} samples saved directly to your device storage:',
+                '${result.recordCount} samples saved directly to your device:',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 12),
+
+              // Shortened and easily recognizable location
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -208,18 +211,70 @@ class SensorHistoryScreen extends StatelessWidget {
                   color: const Color(0xFFF0F2F7),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: SelectableText(
-                  result.filePath,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    color: Color(0xFF171923),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.folder_open_rounded,
+                          size: 18,
+                          color: Color(0xFF4B5563),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            result.displayPath,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF171923),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Path: ${result.filePath}',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 10,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: const [
+                  Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Open Files or Downloads app > Sensora to view.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Copy Path'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: result.filePath));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Full file path copied to clipboard!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF171923),
@@ -344,6 +399,32 @@ class _SessionCard extends StatelessWidget {
               ),
             ],
           ),
+
+          // Sensor types tags (if captured)
+          if (session.sensorList.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: session.sensorList.map((sensor) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    sensor,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF4B5563),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
 
           const SizedBox(height: 14),
           const Divider(height: 1),

@@ -5,6 +5,7 @@ class SessionModel {
   final DateTime? endTime;
   final int durationMs;
   final int sampleCount;
+  final String sensorTypes;
 
   SessionModel({
     this.id,
@@ -13,6 +14,7 @@ class SessionModel {
     this.endTime,
     this.durationMs = 0,
     this.sampleCount = 0,
+    this.sensorTypes = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class SessionModel {
       'end_time': endTime?.toIso8601String(),
       'duration_ms': durationMs,
       'sample_count': sampleCount,
+      'sensor_types': sensorTypes,
     };
   }
 
@@ -36,6 +39,7 @@ class SessionModel {
           : null,
       durationMs: (map['duration_ms'] as num?)?.toInt() ?? 0,
       sampleCount: (map['sample_count'] as num?)?.toInt() ?? 0,
+      sensorTypes: (map['sensor_types'] as String?) ?? '',
     );
   }
 
@@ -46,6 +50,7 @@ class SessionModel {
     DateTime? endTime,
     int? durationMs,
     int? sampleCount,
+    String? sensorTypes,
   }) {
     return SessionModel(
       id: id ?? this.id,
@@ -54,8 +59,15 @@ class SessionModel {
       endTime: endTime ?? this.endTime,
       durationMs: durationMs ?? this.durationMs,
       sampleCount: sampleCount ?? this.sampleCount,
+      sensorTypes: sensorTypes ?? this.sensorTypes,
     );
   }
+
+  List<String> get sensorList => sensorTypes
+      .split(',')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
 
   String get formattedDuration {
     final duration = Duration(milliseconds: durationMs);

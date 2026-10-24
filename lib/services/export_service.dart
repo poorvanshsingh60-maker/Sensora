@@ -11,6 +11,8 @@ import '../models/session_model.dart';
 class ExportResult {
   final bool success;
   final String filePath;
+  final String displayPath;
+  final String fileName;
   final String format;
   final int recordCount;
   final String? errorMessage;
@@ -18,6 +20,8 @@ class ExportResult {
   ExportResult({
     required this.success,
     required this.filePath,
+    required this.displayPath,
+    required this.fileName,
     required this.format,
     required this.recordCount,
     this.errorMessage,
@@ -29,31 +33,59 @@ class ExportService {
 
   ExportService._internal();
 
-  /// Gets or creates the target export folder in Downloads/Documents
+  /// Gets or creates an easily accessible user export folder.
+  /// Prioritizes the public Downloads/Sensora folder on Android so files are immediately
+  /// visible in the device's Files/Downloads app.
   Future<Directory> _getExportDirectory() async {
-    Directory? baseDir;
+    // 1. Android: Primary user-visible public Download directory
+    if (Platform.isAndroid) {
+      try {
+        final publicDownload = Directory('/storage/emulated/0/Download');
+        if (await publicDownload.exists()) {
+          final sensoraFolder = Directory(p.join(publicDownload.path, 'Sensora'));
+          if (!await sensoraFolder.exists()) {
+            await sensoraFolder.create(recursive: true);
+          }
+          return sensoraFolder;
+        }
+      } catch (_) {
+        // Fallback if permissions or Scoped Storage block direct path
+      }
+    }
 
-    // 1. Try public/platform downloads directory
+    // 2. Standard Downloads directory via path_provider
     try {
-      baseDir = await getDownloadsDirectory();
+      final downloads = await getDownloadsDirectory();
+      if (downloads != null) {
+        final sensoraFolder = Directory(p.join(downloads.path, 'Sensora'));
+        if (!await sensoraFolder.exists()) {
+          await sensoraFolder.create(recursive: true);
+        }
+        return sensoraFolder;
+      }
     } catch (_) {}
 
-    // 2. Fallback to external storage (Android)
-    if (baseDir == null) {
+    // 3. Android: App External Storage directory fallback
+    if (Platform.isAndroid) {
       try {
-        baseDir = await getExternalStorageDirectory();
+        final ext = await getExternalStorageDirectory();
+        if (ext != null) {
+          final sensoraFolder = Directory(p.join(ext.path, 'Sensora'));
+          if (!await sensoraFolder.exists()) {
+            await sensoraFolder.create(recursive: true);
+          }
+          return sensoraFolder;
+        }
       } catch (_) {}
     }
 
-    // 3. Fallback to application documents directory
-    baseDir ??= await getApplicationDocumentsDirectory();
-
-    // Create a dedicated 'Sensora_Exports' sub-directory
-    final exportDir = Directory(p.join(baseDir.path, 'Sensora_Exports'));
-    if (!await exportDir.exists()) {
-      await exportDir.create(recursive: true);
+    // 4. Final fallback: Application Documents directory
+    final appDocs = await getApplicationDocumentsDirectory();
+    final sensoraFolder = Directory(p.join(appDocs.path, 'Sensora'));
+    if (!await sensoraFolder.exists()) {
+      await sensoraFolder.create(recursive: true);
     }
-    return exportDir;
+    return sensoraFolder;
   }
 
   String _sanitizeFileName(String name) {
@@ -61,6 +93,26 @@ class ExportService {
         .replaceAll(RegExp(r'[\\/:*?"<>| ]'), '_')
         .replaceAll(RegExp(r'_+'), '_')
         .trim();
+  }
+
+  /// Formats long system directory paths into concise, recognizable paths for users
+  String _formatDisplayPath(String fullPath, String fileName) {
+    if (fullPath.contains('/storage/emulated/0/Download/Sensora/')) {
+      return 'Downloads > Sensora > $fileName';
+    }
+    if (fullPath.contains('/storage/emulated/0/Download/')) {
+      return 'Downloads > $fileName';
+    }
+    if (fullPath.contains('/storage/emulated/0/')) {
+      final relative = fullPath.replaceFirst('/storage/emulated/0/', '');
+      return 'Internal Storage > $relative';
+    }
+    // Desktop / iOS user path shortening
+    final userHome = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    if (userHome != null && fullPath.startsWith(userHome)) {
+      return fullPath.replaceFirst(userHome, '~');
+    }
+    return fullPath;
   }
 
   /// Exports a session and all its recorded points as a CSV file.
@@ -83,6 +135,9 @@ class ExportService {
       buffer.writeln('# End Time: ${session.endTime?.toIso8601String() ?? "N/A"}');
       buffer.writeln('# Duration: ${session.formattedDuration} (${session.durationMs} ms)');
       buffer.writeln('# Total Samples: ${records.length}');
+      if (session.sensorTypes.isNotEmpty) {
+        buffer.writeln('# Sensors Recorded: ${session.sensorTypes}');
+      }
       buffer.writeln('# --------------------------------------------------');
 
       // CSV column headers
@@ -102,6 +157,8 @@ class ExportService {
       return ExportResult(
         success: true,
         filePath: file.path,
+        displayPath: _formatDisplayPath(file.path, fileName),
+        fileName: fileName,
         format: 'CSV',
         recordCount: records.length,
       );
@@ -109,6 +166,8 @@ class ExportService {
       return ExportResult(
         success: false,
         filePath: '',
+        displayPath: '',
+        fileName: '',
         format: 'CSV',
         recordCount: 0,
         errorMessage: e.toString(),
@@ -140,6 +199,7 @@ class ExportService {
           'durationMs': session.durationMs,
           'formattedDuration': session.formattedDuration,
           'sampleCount': records.length,
+          'sensorTypes': session.sensorTypes,
         },
         'records': records.map((r) => {
           'timestamp': r.timestamp.toIso8601String(),
@@ -158,6 +218,8 @@ class ExportService {
       return ExportResult(
         success: true,
         filePath: file.path,
+        displayPath: _formatDisplayPath(file.path, fileName),
+        fileName: fileName,
         format: 'JSON',
         recordCount: records.length,
       );
@@ -165,6 +227,8 @@ class ExportService {
       return ExportResult(
         success: false,
         filePath: '',
+        displayPath: '',
+        fileName: '',
         format: 'JSON',
         recordCount: 0,
         errorMessage: e.toString(),
