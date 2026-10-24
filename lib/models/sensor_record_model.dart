@@ -1,7 +1,7 @@
 class SensorRecordModel {
   final int? id;
   final int sessionId;
-  final String sensorType; // accelerometer, gyroscope, magnetometer, orientation
+  final String sensorType; // accelerometer, gyroscope, magnetometer, orientation, light, proximity
   final DateTime timestamp;
   final int timeOffsetMs;
   final double x;
@@ -20,6 +20,11 @@ class SensorRecordModel {
     required this.z,
     required this.magnitude,
   });
+
+  /// For single-value sensors (e.g. ambient light in lux, proximity)
+  double get value => x;
+  double get lux => x;
+  bool get isNear => x > 0.5;
 
   Map<String, dynamic> toMap() {
     return {

@@ -34,6 +34,7 @@ class SensorController extends GetxController {
 
   final RxDouble bubbleX = 0.0.obs;
   final RxDouble bubbleY = 0.0.obs;
+
   // --------------------------------------------------
   // CURRENT SENSOR VALUES
   // --------------------------------------------------
@@ -98,6 +99,7 @@ class SensorController extends GetxController {
   Timer? _recordingTimer;
   Timer? _bufferFlushTimer;
   final List<SensorRecordModel> _recordBuffer = [];
+  final Set<String> _recordedSensorTypes = {};
 
   // --------------------------------------------------
   // INITIALIZATION
@@ -127,6 +129,7 @@ class SensorController extends GetxController {
             magnitude: 0,
           ),
         );
+        _recordedSensorTypes.add('Orientation');
         recordingSampleCount.value++;
       }
     };
@@ -142,44 +145,29 @@ class SensorController extends GetxController {
         timestamp: now,
       );
 
-      // Calculate inclination from gravity.
-      //
-      // Flat phone  -> ~0°
-      // Upright     -> ~90°
-      //
-      // Uses the magnitude of X/Y against Z.
+      // Calculate inclination from gravity (0° flat -> ~90° upright)
       final double inclination = math.atan2(
-        math.sqrt(
-          event.x * event.x +
-              event.y * event.y,
-        ),
+        math.sqrt(event.x * event.x + event.y * event.y),
         event.z.abs(),
       );
+      _latestProtractorAngle = inclination * 180 / math.pi;
 
-      _latestProtractorAngle =
-          inclination * 180 / math.pi;
-
-      if (isRecording.value &&
-          _activeSession?.id != null &&
-          _sessionStartTime != null) {
+      if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
         _recordBuffer.add(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'accelerometer',
             timestamp: now,
-            timeOffsetMs:
-            now.difference(_sessionStartTime!).inMilliseconds,
+            timeOffsetMs: now.difference(_sessionStartTime!).inMilliseconds,
             x: event.x,
             y: event.y,
             z: event.z,
             magnitude: math.sqrt(
-              event.x * event.x +
-                  event.y * event.y +
-                  event.z * event.z,
+              event.x * event.x + event.y * event.y + event.z * event.z,
             ),
           ),
         );
-
+        _recordedSensorTypes.add('Accelerometer');
         recordingSampleCount.value++;
       }
     };
@@ -204,18 +192,14 @@ class SensorController extends GetxController {
             x: event.x,
             y: event.y,
             z: event.z,
-            magnitude: math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z),
+            magnitude: math.sqrt(
+              event.x * event.x + event.y * event.y + event.z * event.z,
+            ),
           ),
         );
+        _recordedSensorTypes.add('Gyroscope');
         recordingSampleCount.value++;
       }
-    };
-    sensorManager.onLight = (value) {
-      light.value = value;
-    };
-
-    sensorManager.onProximity = (value) {
-      proximity.value = value;
     };
 
     // 4. Magnetometer Listener
@@ -238,9 +222,58 @@ class SensorController extends GetxController {
             x: event.x,
             y: event.y,
             z: event.z,
-            magnitude: math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z),
+            magnitude: math.sqrt(
+              event.x * event.x + event.y * event.y + event.z * event.z,
+            ),
           ),
         );
+        _recordedSensorTypes.add('Magnetometer');
+        recordingSampleCount.value++;
+      }
+    };
+
+    // 5. Light Sensor Listener
+    sensorManager.onLight = (value) {
+      light.value = value;
+
+      if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
+        final now = DateTime.now();
+        _recordBuffer.add(
+          SensorRecordModel(
+            sessionId: _activeSession!.id!,
+            sensorType: 'light',
+            timestamp: now,
+            timeOffsetMs: now.difference(_sessionStartTime!).inMilliseconds,
+            x: value,
+            y: 0,
+            z: 0,
+            magnitude: value,
+          ),
+        );
+        _recordedSensorTypes.add('Light');
+        recordingSampleCount.value++;
+      }
+    };
+
+    // 6. Proximity Sensor Listener
+    sensorManager.onProximity = (value) {
+      proximity.value = value;
+
+      if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
+        final now = DateTime.now();
+        _recordBuffer.add(
+          SensorRecordModel(
+            sessionId: _activeSession!.id!,
+            sensorType: 'proximity',
+            timestamp: now,
+            timeOffsetMs: now.difference(_sessionStartTime!).inMilliseconds,
+            x: value ? 1.0 : 0.0,
+            y: 0,
+            z: 0,
+            magnitude: value ? 1.0 : 0.0,
+          ),
+        );
+        _recordedSensorTypes.add('Proximity');
         recordingSampleCount.value++;
       }
     };
@@ -328,6 +361,7 @@ class SensorController extends GetxController {
     final session = SessionModel(
       title: trimmedTitle,
       startTime: now,
+      sensorTypes: 'Accelerometer, Gyroscope, Magnetometer, Orientation, Light, Proximity',
     );
 
     final sessionId = await DatabaseHelper.instance.insertSession(session);
@@ -338,6 +372,7 @@ class SensorController extends GetxController {
     recordingDuration.value = Duration.zero;
     recordingSampleCount.value = 0;
     _recordBuffer.clear();
+    _recordedSensorTypes.clear();
     isRecording.value = true;
 
     // Elapsed timer updates duration display
@@ -367,16 +402,22 @@ class SensorController extends GetxController {
     final durationMs = _sessionStartTime != null ? now.difference(_sessionStartTime!).inMilliseconds : 0;
     final totalSamples = recordingSampleCount.value;
 
+    final capturedTypes = _recordedSensorTypes.isNotEmpty
+        ? _recordedSensorTypes.join(', ')
+        : 'Accelerometer, Gyroscope, Magnetometer, Orientation';
+
     final finalizedSession = _activeSession!.copyWith(
       endTime: now,
       durationMs: durationMs,
       sampleCount: totalSamples,
+      sensorTypes: capturedTypes,
     );
 
     await DatabaseHelper.instance.updateSession(finalizedSession);
 
     _activeSession = null;
     _sessionStartTime = null;
+    _recordedSensorTypes.clear();
 
     // Refresh history list
     await loadSessions();
