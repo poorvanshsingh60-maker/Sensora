@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../controllers/sensor_controller.dart';
 import '../models/sensor_data.dart';
+import '../sensors/sensor_processor.dart';
 
 class SensorDashboard extends StatelessWidget {
   SensorDashboard({super.key});
@@ -121,16 +122,16 @@ class SensorDashboard extends StatelessWidget {
 
               const SizedBox(height: 28),
               Obx(
-                    () => _buildValueCard(
+                () => _buildValueCard(
                   icon: Icons.light_mode_rounded,
                   title: 'Ambient Light',
                   value: '${controller.light.value.toStringAsFixed(1)} lux',
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 12),
               Obx(
-                    () => _buildValueCard(
+                () => _buildValueCard(
                   icon: Icons.sensors_rounded,
                   title: 'Proximity',
                   value: controller.proximity.value ? 'Near' : 'Far',
@@ -144,8 +145,9 @@ class SensorDashboard extends StatelessWidget {
   }
 
   // ------------------------------------------------------------
-  // SECTION TITLE
+  // VALUE CARD (SCALAR SENSORS)
   // ------------------------------------------------------------
+
   Widget _buildValueCard({
     required IconData icon,
     required String title,
@@ -169,9 +171,7 @@ class SensorDashboard extends StatelessWidget {
               ),
               child: Icon(icon),
             ),
-
             const SizedBox(width: 16),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,6 +199,11 @@ class SensorDashboard extends StatelessWidget {
       ),
     );
   }
+
+  // ------------------------------------------------------------
+  // SECTION TITLE
+  // ------------------------------------------------------------
+
   Widget _sectionTitle(
     String title,
     String subtitle,
@@ -237,6 +242,7 @@ class SensorDashboard extends StatelessWidget {
       final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
       final tenths = ((duration.inMilliseconds.remainder(1000)) ~/ 100).toString();
       final timeStr = '$minutes:$seconds.$tenths';
+      final filterTag = controller.isLowPassFilterEnabled.value ? 'EMA Filtered' : 'Raw Stream';
 
       return Container(
         width: double.infinity,
@@ -287,10 +293,12 @@ class SensorDashboard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isRec ? 'Recording Session ($timeStr)' : 'Sensors Active',
+                    isRec
+                        ? 'Recording ($timeStr)'
+                        : 'Sensors Active ($filterTag)',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 17,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -328,52 +336,156 @@ class SensorDashboard extends StatelessWidget {
   void _showStartRecordingDialog(BuildContext context) {
     final defaultTitle = 'Session ${DateFormat('MMM dd HH:mm').format(DateTime.now())}';
     final textController = TextEditingController(text: defaultTitle);
+    SamplingRate chosenRate = controller.selectedSamplingRate.value;
+    bool filterActive = controller.isLowPassFilterEnabled.value;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Start Recording Session',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Telemetry across all active sensors will be captured and persisted into local SQLite.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Start Recording Session',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Telemetry across active sensors will be captured and persisted into local SQLite.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: textController,
+                  autofocus: false,
+                  decoration: InputDecoration(
+                    labelText: 'Session Title',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.bookmark_border_rounded),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'SAMPLING RATE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F2F7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<SamplingRate>(
+                      isExpanded: true,
+                      itemHeight: 56.0,
+                      value: chosenRate,
+                      selectedItemBuilder: (BuildContext context) {
+                        return SamplingRate.values.map<Widget>((rate) {
+                          return Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              rate.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }).toList();
+                      },
+                      items: SamplingRate.values.map((rate) {
+                        return DropdownMenuItem<SamplingRate>(
+                          value: rate,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                rate.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                rate.description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (newRate) {
+                        if (newRate != null) {
+                          setState(() {
+                            chosenRate = newRate;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Low-Pass Noise Filter',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text(
+                    'Smooths out micro-vibrations and jitter',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  value: filterActive,
+                  onChanged: (val) {
+                    setState(() {
+                      filterActive = val;
+                    });
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: textController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Session Title',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.bookmark_border_rounded),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE53E3E),
               ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                controller.setFilterEnabled(filterActive);
+                controller.startRecording(textController.text, rate: chosenRate);
+              },
+              label: const Text('Start'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            icon: const Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFE53E3E),
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              controller.startRecording(textController.text);
-            },
-            label: const Text('Start'),
-          ),
-        ],
       ),
     );
   }

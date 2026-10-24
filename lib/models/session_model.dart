@@ -6,6 +6,7 @@ class SessionModel {
   final int durationMs;
   final int sampleCount;
   final String sensorTypes;
+  final String samplingRate;
 
   SessionModel({
     this.id,
@@ -15,6 +16,7 @@ class SessionModel {
     this.durationMs = 0,
     this.sampleCount = 0,
     this.sensorTypes = '',
+    this.samplingRate = 'Standard (25 Hz)',
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +28,7 @@ class SessionModel {
       'duration_ms': durationMs,
       'sample_count': sampleCount,
       'sensor_types': sensorTypes,
+      'sampling_rate': samplingRate,
     };
   }
 
@@ -40,6 +43,7 @@ class SessionModel {
       durationMs: (map['duration_ms'] as num?)?.toInt() ?? 0,
       sampleCount: (map['sample_count'] as num?)?.toInt() ?? 0,
       sensorTypes: (map['sensor_types'] as String?) ?? '',
+      samplingRate: (map['sampling_rate'] as String?) ?? 'Standard (25 Hz)',
     );
   }
 
@@ -51,6 +55,7 @@ class SessionModel {
     int? durationMs,
     int? sampleCount,
     String? sensorTypes,
+    String? samplingRate,
   }) {
     return SessionModel(
       id: id ?? this.id,
@@ -60,6 +65,7 @@ class SessionModel {
       durationMs: durationMs ?? this.durationMs,
       sampleCount: sampleCount ?? this.sampleCount,
       sensorTypes: sensorTypes ?? this.sensorTypes,
+      samplingRate: samplingRate ?? this.samplingRate,
     );
   }
 
