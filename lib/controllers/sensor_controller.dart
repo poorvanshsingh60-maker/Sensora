@@ -21,7 +21,9 @@ class SensorController extends GetxController {
   double _latestAzimuth = 0.0;
   double _latestPitch = 0.0;
   double _latestRoll = 0.0;
+  double _latestProtractorAngle = 0.0;
 
+  final RxDouble protractorAngle = 0.0.obs;
   final RxDouble tiltX = 0.0.obs;
   final RxDouble tiltY = 0.0.obs;
   final RxDouble azimuth = 0.0.obs;
@@ -29,6 +31,9 @@ class SensorController extends GetxController {
   final RxDouble roll = 0.0.obs;
   final RxDouble light = 0.0.obs;
   final RxBool proximity = false.obs;
+
+  final RxDouble bubbleX = 0.0.obs;
+  final RxDouble bubbleY = 0.0.obs;
   // --------------------------------------------------
   // CURRENT SENSOR VALUES
   // --------------------------------------------------
@@ -129,6 +134,7 @@ class SensorController extends GetxController {
     // 2. Accelerometer Listener
     sensorManager.onAccelerometer = (event) {
       final now = DateTime.now();
+
       _latestAccelerometer = SensorData(
         x: event.x,
         y: event.y,
@@ -136,19 +142,44 @@ class SensorController extends GetxController {
         timestamp: now,
       );
 
-      if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
+      // Calculate inclination from gravity.
+      //
+      // Flat phone  -> ~0°
+      // Upright     -> ~90°
+      //
+      // Uses the magnitude of X/Y against Z.
+      final double inclination = math.atan2(
+        math.sqrt(
+          event.x * event.x +
+              event.y * event.y,
+        ),
+        event.z.abs(),
+      );
+
+      _latestProtractorAngle =
+          inclination * 180 / math.pi;
+
+      if (isRecording.value &&
+          _activeSession?.id != null &&
+          _sessionStartTime != null) {
         _recordBuffer.add(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'accelerometer',
             timestamp: now,
-            timeOffsetMs: now.difference(_sessionStartTime!).inMilliseconds,
+            timeOffsetMs:
+            now.difference(_sessionStartTime!).inMilliseconds,
             x: event.x,
             y: event.y,
             z: event.z,
-            magnitude: math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z),
+            magnitude: math.sqrt(
+              event.x * event.x +
+                  event.y * event.y +
+                  event.z * event.z,
+            ),
           ),
         );
+
         recordingSampleCount.value++;
       }
     };
@@ -238,6 +269,7 @@ class SensorController extends GetxController {
   void _updateUI() {
     azimuth.value = _latestAzimuth;
     pitch.value = _latestPitch;
+    protractorAngle.value = _latestProtractorAngle;
     roll.value = _latestRoll;
 
     if (_latestAccelerometer != null) {

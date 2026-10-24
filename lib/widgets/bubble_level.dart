@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 class BubbleLevel extends StatelessWidget {
@@ -13,16 +15,24 @@ class BubbleLevel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const double size = 260;
+    const double maxAngle = 45.0;
+    const double maxOffset = 78.0;
 
-    // Limit the angle so the bubble doesn't leave the level.
-    final double x = tiltY.clamp(-45.0, 45.0);
-    final double y = tiltX.clamp(-45.0, 45.0);
+    // Sensor values are in radians.
+    final double pitchDegrees = tiltX * 180 / math.pi;
+    final double rollDegrees = tiltY * 180 / math.pi;
 
-    // Maximum distance the bubble can travel from the center.
-    const double maxOffset = 75;
+    // Limit movement so the bubble stays inside the level.
+    final double pitch =
+    pitchDegrees.clamp(-maxAngle, maxAngle).toDouble();
 
-    final double offsetX = (x / 45) * maxOffset;
-    final double offsetY = (y / 45) * maxOffset;
+    final double roll =
+    rollDegrees.clamp(-maxAngle, maxAngle).toDouble();
+
+    // Roll controls horizontal movement.
+    // Pitch controls vertical movement.
+    final double offsetX = (roll / maxAngle) * maxOffset;
+    final double offsetY = -(pitch / maxAngle) * maxOffset;
 
     return SizedBox(
       width: size,
@@ -30,12 +40,13 @@ class BubbleLevel extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Outer level
+          // Outer circle
           Container(
             width: size,
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              color: const Color(0xFFF8F9FC),
               border: Border.all(
                 width: 4,
               ),
@@ -55,27 +66,30 @@ class BubbleLevel extends StatelessWidget {
           ),
 
           // Horizontal guide
-          const SizedBox(
+          Container(
             width: 180,
             height: 2,
           ),
 
           // Vertical guide
-          const SizedBox(
+          Container(
             width: 2,
             height: 180,
           ),
 
-          // Center point
+          // Center target
           Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
+              border: Border.all(
+                width: 2,
+              ),
             ),
           ),
 
-          // Bubble
+          // Moving bubble
           Transform.translate(
             offset: Offset(offsetX, offsetY),
             child: Container(
@@ -90,7 +104,7 @@ class BubbleLevel extends StatelessWidget {
               child: const Center(
                 child: Icon(
                   Icons.circle,
-                  size: 26,
+                  size: 25,
                 ),
               ),
             ),
