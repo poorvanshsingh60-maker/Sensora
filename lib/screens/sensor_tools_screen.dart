@@ -254,7 +254,7 @@ class SensorToolsScreen extends StatelessWidget {
           Center(
             child: Obx(
                   () => Protractor(
-                angle: controller.pitch.value,
+                angle: controller.protractorAngle.value,
               ),
             ),
           ),
@@ -267,7 +267,7 @@ class SensorToolsScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    '${controller.pitch.value.toStringAsFixed(1)}°',
+                    '${controller.protractorAngle.value.toStringAsFixed(1)}°',
                     style: const TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w800,
@@ -277,7 +277,7 @@ class SensorToolsScreen extends StatelessWidget {
                   const SizedBox(height: 3),
 
                   const Text(
-                    'Current Pitch',
+                    'Inclination',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
