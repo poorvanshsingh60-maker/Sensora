@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'sensor_dashboard.dart';
 import 'sensor_graphs_screen.dart';
-import 'sensor_history_screen.dart';
+import 'compass_screen.dart';
 import 'sensor_tools_screen.dart';
+import 'sensor_history_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -18,6 +19,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     SensorDashboard(),
     SensorGraphsScreen(),
+    CompassScreen(),
     SensorToolsScreen(),
     const SensorHistoryScreen(),
   ];
@@ -49,6 +51,11 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.show_chart_outlined),
             selectedIcon: Icon(Icons.show_chart_rounded),
             label: 'Sensors',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore_rounded),
+            label: 'Compass',
           ),
           NavigationDestination(
             icon: Icon(Icons.handyman_outlined),
