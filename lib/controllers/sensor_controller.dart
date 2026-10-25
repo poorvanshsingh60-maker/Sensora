@@ -17,7 +17,6 @@ class SensorController extends GetxController {
   // --------------------------------------------------
   // ROTATION, ORIENTATION & TILT
   // --------------------------------------------------
-
   double _latestAzimuth = 0.0;
   double _latestPitch = 0.0;
   double _latestRoll = 0.0;
@@ -116,25 +115,37 @@ class SensorController extends GetxController {
       _latestPitch = event.eulerAngles.pitch;
       _latestRoll = event.eulerAngles.roll;
 
-      if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
+      pitch.value = _latestPitch * 180 / math.pi;
+      roll.value = _latestRoll * 180 / math.pi;
+
+      if (isRecording.value &&
+          _activeSession?.id != null &&
+          _sessionStartTime != null) {
         final now = DateTime.now();
+
         _recordBuffer.add(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'orientation',
             timestamp: now,
-            timeOffsetMs: now.difference(_sessionStartTime!).inMilliseconds,
+            timeOffsetMs:
+            now.difference(_sessionStartTime!).inMilliseconds,
             x: _latestAzimuth * 180 / math.pi,
             y: _latestPitch * 180 / math.pi,
             z: _latestRoll * 180 / math.pi,
             magnitude: 0,
           ),
         );
+
         _recordedSensorTypes.add('Orientation');
         recordingSampleCount.value++;
       }
     };
 
+    //Compass Listener
+    sensorManager.onCompass = (heading) {
+      azimuth.value = heading;
+    };
     // 2. Accelerometer Listener
     sensorManager.onAccelerometer = (event) {
       final now = DateTime.now();
@@ -308,14 +319,15 @@ class SensorController extends GetxController {
   }
 
   void _updateUI() {
-    azimuth.value = _latestAzimuth;
-    pitch.value = _latestPitch;
+    pitch.value = _latestPitch * 180 / math.pi;
     protractorAngle.value = _latestProtractorAngle;
-    roll.value = _latestRoll;
+    roll.value = _latestRoll * 180 / math.pi;
 
     if (_latestAccelerometer != null) {
       accelerometer.value = _latestAccelerometer!;
+
       accelerometerHistory.add(_latestAccelerometer!);
+
       if (accelerometerHistory.length > maxHistoryLength) {
         accelerometerHistory.removeAt(0);
       }
@@ -325,23 +337,25 @@ class SensorController extends GetxController {
       final z = _latestAccelerometer!.z;
 
       tiltX.value = math.atan2(
-            x,
-            math.sqrt(y * y + z * z),
-          ) *
+        x,
+        math.sqrt(y * y + z * z),
+      ) *
           180 /
           math.pi;
 
       tiltY.value = math.atan2(
-            y,
-            math.sqrt(x * x + z * z),
-          ) *
+        y,
+        math.sqrt(x * x + z * z),
+      ) *
           180 /
           math.pi;
     }
 
     if (_latestGyroscope != null) {
       gyroscope.value = _latestGyroscope!;
+
       gyroscopeHistory.add(_latestGyroscope!);
+
       if (gyroscopeHistory.length > maxHistoryLength) {
         gyroscopeHistory.removeAt(0);
       }
@@ -349,7 +363,9 @@ class SensorController extends GetxController {
 
     if (_latestMagnetometer != null) {
       magnetometer.value = _latestMagnetometer!;
+
       magnetometerHistory.add(_latestMagnetometer!);
+
       if (magnetometerHistory.length > maxHistoryLength) {
         magnetometerHistory.removeAt(0);
       }

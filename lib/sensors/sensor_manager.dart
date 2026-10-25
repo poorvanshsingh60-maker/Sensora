@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
+
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_rotation_sensor/flutter_rotation_sensor.dart';
 import 'package:light/light.dart';
 import 'package:proximity_sensor/proximity_sensor.dart';
@@ -14,12 +16,13 @@ class SensorManager {
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
   StreamSubscription<OrientationEvent>? _orientationSubscription;
-  double _lastAccelerationMagnitude = 0.0;
-  DateTime? _lastShakeTime;
+  StreamSubscription<CompassEvent>? _compassSubscription;
 
-  Function()? onShake;
   StreamSubscription<int>? _lightSubscription;
   StreamSubscription<int>? _proximitySubscription;
+
+  double _lastAccelerationMagnitude = 0.0;
+  DateTime? _lastShakeTime;
 
   // --------------------------------------------------
   // CALLBACKS
@@ -29,9 +32,11 @@ class SensorManager {
   Function(GyroscopeEvent)? onGyroscope;
   Function(MagnetometerEvent)? onMagnetometer;
   Function(OrientationEvent)? onOrientation;
+  Function(double)? onCompass;
 
   Function(double)? onLight;
   Function(bool)? onProximity;
+  Function()? onShake;
 
   // --------------------------------------------------
   // START SENSORS
@@ -85,7 +90,17 @@ class SensorManager {
           onOrientation?.call(event);
         });
 
-    // Light
+    // Compass
+    _compassSubscription =
+        FlutterCompass.events?.listen((event) {
+
+          final heading = event.heading;
+
+          if (heading != null) {
+            onCompass?.call(heading);
+          }
+        });
+
     // Light
     _lightSubscription =
         Light().lightSensorStream.listen((lux) {
@@ -112,6 +127,7 @@ class SensorManager {
     _gyroscopeSubscription?.cancel();
     _magnetometerSubscription?.cancel();
     _orientationSubscription?.cancel();
+    _compassSubscription?.cancel();
 
     _lightSubscription?.cancel();
     _proximitySubscription?.cancel();
