@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-
+import '../sensors/sensor_processor.dart';
 import '../database/database_helper.dart';
 import '../models/sensor_data.dart';
 import '../models/sensor_record_model.dart';
@@ -17,6 +17,10 @@ class SensorController extends GetxController {
   // --------------------------------------------------
   // ROTATION, ORIENTATION & TILT
   // --------------------------------------------------
+  final RxBool isLowPassFilterEnabled = false.obs;
+
+  final Rx<SamplingRate> selectedSamplingRate =
+      SamplingRate.standard.obs;
   double _latestAzimuth = 0.0;
   double _latestPitch = 0.0;
   double _latestRoll = 0.0;
@@ -375,8 +379,13 @@ class SensorController extends GetxController {
   // --------------------------------------------------
   // SESSION RECORDING CONTROLS
   // --------------------------------------------------
-
-  Future<void> startRecording(String title) async {
+  void setFilterEnabled(bool enabled) {
+    isLowPassFilterEnabled.value = enabled;
+  }
+  Future<void> startRecording(
+      String title, {
+        SamplingRate? rate,
+      }) async {
     if (isRecording.value) return;
 
     final trimmedTitle = title.trim().isEmpty ? 'Session ${DateTime.now().toIso8601String()}' : title.trim();
@@ -436,6 +445,7 @@ class SensorController extends GetxController {
       sampleCount: totalSamples,
       sensorTypes: capturedTypes,
     );
+
 
     await DatabaseHelper.instance.updateSession(finalizedSession);
 
