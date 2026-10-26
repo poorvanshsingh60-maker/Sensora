@@ -10,6 +10,7 @@ import '../models/sensor_record_model.dart';
 import '../models/session_model.dart';
 import '../sensors/sensor_manager.dart';
 import '../services/export_service.dart';
+import '../services/notification_service.dart';
 
 class SensorController extends GetxController {
   final SensorManager sensorManager = SensorManager();
@@ -90,6 +91,10 @@ class SensorController extends GetxController {
   // SESSION RECORDING & SQLITE BUFFER
   // --------------------------------------------------
 
+  // Safety limits: 1-Hour hard cap & 150,000 max sample ceiling
+  static const Duration maxRecordingDuration = Duration(hours: 1);
+  static const int maxSampleLimit = 100000;
+
   final RxBool isRecording = false.obs;
   final Rx<Duration> recordingDuration = Duration.zero.obs;
   final RxInt recordingSampleCount = 0.obs;
@@ -104,6 +109,20 @@ class SensorController extends GetxController {
   Timer? _bufferFlushTimer;
   final List<SensorRecordModel> _recordBuffer = [];
   final Set<String> _recordedSensorTypes = {};
+
+  void _recordSample(SensorRecordModel record, String sensorType) {
+    if (!isRecording.value || _activeSession?.id == null || _sessionStartTime == null) {
+      return;
+    }
+    _recordBuffer.add(record);
+    _recordedSensorTypes.add(sensorType);
+    recordingSampleCount.value++;
+
+    // 2. Max sample count safety cap
+    if (recordingSampleCount.value >= maxSampleLimit) {
+      stopRecording(autoStopReason: 'Max sample capacity (150,000) reached');
+    }
+  }
 
   // --------------------------------------------------
   // INITIALIZATION
@@ -127,7 +146,7 @@ class SensorController extends GetxController {
           _sessionStartTime != null) {
         final now = DateTime.now();
 
-        _recordBuffer.add(
+        _recordSample(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'orientation',
@@ -139,10 +158,8 @@ class SensorController extends GetxController {
             z: _latestRoll * 180 / math.pi,
             magnitude: 0,
           ),
+          'Orientation',
         );
-
-        _recordedSensorTypes.add('Orientation');
-        recordingSampleCount.value++;
       }
     };
 
@@ -169,7 +186,7 @@ class SensorController extends GetxController {
       _latestProtractorAngle = inclination * 180 / math.pi;
 
       if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
-        _recordBuffer.add(
+        _recordSample(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'accelerometer',
@@ -182,9 +199,8 @@ class SensorController extends GetxController {
               event.x * event.x + event.y * event.y + event.z * event.z,
             ),
           ),
+          'Accelerometer',
         );
-        _recordedSensorTypes.add('Accelerometer');
-        recordingSampleCount.value++;
       }
     };
 
@@ -199,7 +215,7 @@ class SensorController extends GetxController {
       );
 
       if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
-        _recordBuffer.add(
+        _recordSample(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'gyroscope',
@@ -212,9 +228,8 @@ class SensorController extends GetxController {
               event.x * event.x + event.y * event.y + event.z * event.z,
             ),
           ),
+          'Gyroscope',
         );
-        _recordedSensorTypes.add('Gyroscope');
-        recordingSampleCount.value++;
       }
     };
 
@@ -227,16 +242,8 @@ class SensorController extends GetxController {
         z: event.z,
         timestamp: now,
       );
-      sensorManager.onShake = () {
-        shakeCount.value++;
-        isShaking.value = true;
-
-        Future.delayed(const Duration(milliseconds: 500), () {
-          isShaking.value = false;
-        });
-      };
       if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
-        _recordBuffer.add(
+        _recordSample(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'magnetometer',
@@ -249,10 +256,18 @@ class SensorController extends GetxController {
               event.x * event.x + event.y * event.y + event.z * event.z,
             ),
           ),
+          'Magnetometer',
         );
-        _recordedSensorTypes.add('Magnetometer');
-        recordingSampleCount.value++;
       }
+    };
+
+    // Shake Listener
+    sensorManager.onShake = () {
+      shakeCount.value++;
+      isShaking.value = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        isShaking.value = false;
+      });
     };
 
     // 5. Light Sensor Listener
@@ -261,7 +276,7 @@ class SensorController extends GetxController {
 
       if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
         final now = DateTime.now();
-        _recordBuffer.add(
+        _recordSample(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'light',
@@ -272,9 +287,8 @@ class SensorController extends GetxController {
             z: 0,
             magnitude: value,
           ),
+          'Light',
         );
-        _recordedSensorTypes.add('Light');
-        recordingSampleCount.value++;
       }
     };
 
@@ -284,7 +298,7 @@ class SensorController extends GetxController {
 
       if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
         final now = DateTime.now();
-        _recordBuffer.add(
+        _recordSample(
           SensorRecordModel(
             sessionId: _activeSession!.id!,
             sensorType: 'proximity',
@@ -295,9 +309,8 @@ class SensorController extends GetxController {
             z: 0,
             magnitude: value ? 1.0 : 0.0,
           ),
+          'Proximity',
         );
-        _recordedSensorTypes.add('Proximity');
-        recordingSampleCount.value++;
       }
     };
 
@@ -307,8 +320,16 @@ class SensorController extends GetxController {
     // Start controlled UI timer
     _startUiTimer();
 
+    // Initialize notification service for ongoing recording notifications
+    NotificationService.instance.init(
+      onStopRequested: () => stopRecording(),
+    );
+
     // Initial load of past sessions from SQLite
     loadSessions();
+
+    // 3. Auto-recover any orphaned sessions from previous unexpected shutdowns
+    _recoverOrphanedSessions();
   }
 
   // --------------------------------------------------
@@ -408,10 +429,36 @@ class SensorController extends GetxController {
     _recordedSensorTypes.clear();
     isRecording.value = true;
 
-    // Elapsed timer updates duration display
+    // 4. Show initial persistent ongoing recording notification
+    NotificationService.instance.showRecordingNotification(
+      title: trimmedTitle,
+      formattedDuration: '00:00.0',
+      sampleCount: 0,
+    );
+
+    // Elapsed timer updates duration display and ongoing notification
+    int tickCounter = 0;
     _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (_sessionStartTime != null) {
-        recordingDuration.value = DateTime.now().difference(_sessionStartTime!);
+      if (_sessionStartTime != null && isRecording.value) {
+        final elapsed = DateTime.now().difference(_sessionStartTime!);
+        recordingDuration.value = elapsed;
+
+        // 1. Hard safety cap (1 hour)
+        if (elapsed >= maxRecordingDuration) {
+          stopRecording(autoStopReason: '1-hour safety cap reached');
+          return;
+        }
+
+        // 4. Update ongoing notification every 1 second (10 ticks * 100ms)
+        tickCounter++;
+        if (tickCounter >= 10) {
+          tickCounter = 0;
+          NotificationService.instance.showRecordingNotification(
+            title: activeSessionTitle.value,
+            formattedDuration: _formatDuration(elapsed),
+            sampleCount: recordingSampleCount.value,
+          );
+        }
       }
     });
 
@@ -421,12 +468,15 @@ class SensorController extends GetxController {
     });
   }
 
-  Future<void> stopRecording() async {
+  Future<void> stopRecording({String? autoStopReason}) async {
     if (!isRecording.value || _activeSession == null) return;
 
     isRecording.value = false;
     _recordingTimer?.cancel();
     _bufferFlushTimer?.cancel();
+
+    // 4. Cancel persistent ongoing recording notification
+    await NotificationService.instance.cancelRecordingNotification();
 
     // Flush any remaining records in memory to SQLite
     await _flushBuffer();
@@ -446,15 +496,60 @@ class SensorController extends GetxController {
       sensorTypes: capturedTypes,
     );
 
-
     await DatabaseHelper.instance.updateSession(finalizedSession);
 
+    final sessionTitle = _activeSession!.title;
     _activeSession = null;
     _sessionStartTime = null;
     _recordedSensorTypes.clear();
 
     // Refresh history list
     await loadSessions();
+
+    // If auto-stopped by safety caps (1h or sample limit), notify the user
+    if (autoStopReason != null) {
+      await NotificationService.instance.showAutoStopNotification(
+        title: sessionTitle,
+        reason: autoStopReason,
+      );
+      Get.snackbar(
+        'Recording Auto-Stopped',
+        '$sessionTitle was automatically saved: $autoStopReason.',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 5),
+      );
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      final hours = d.inHours.toString().padLeft(2, '0');
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  Future<void> _recoverOrphanedSessions() async {
+    try {
+      final orphaned = await DatabaseHelper.instance.getOrphanedSessions();
+      if (orphaned.isNotEmpty) {
+        for (final session in orphaned) {
+          await DatabaseHelper.instance.recoverOrphanedSession(session);
+        }
+        debugPrint('Sensora: Recovered ${orphaned.length} orphaned session(s).');
+        await loadSessions();
+        Get.snackbar(
+          'Session Auto-Recovered',
+          'Recovered ${orphaned.length} recording session(s) left open from a previous session.',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error recovering orphaned sessions: $e');
+    }
   }
 
   Future<void> _flushBuffer() async {
@@ -509,6 +604,7 @@ class SensorController extends GetxController {
     _recordingTimer?.cancel();
     _bufferFlushTimer?.cancel();
     _flushBuffer();
+    NotificationService.instance.cancelRecordingNotification();
     sensorManager.stopSensors();
     super.onClose();
   }
