@@ -19,8 +19,8 @@ class BubbleLevel extends StatelessWidget {
     const double maxOffset = 78.0;
 
     // Sensor values are in radians.
-    final double pitchDegrees = tiltX * 180 / math.pi;
-    final double rollDegrees = tiltY * 180 / math.pi;
+    final double pitchDegrees = tiltX ;
+    final double rollDegrees = tiltY;
 
     // Limit movement so the bubble stays inside the level.
     final double pitch =

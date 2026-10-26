@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:vibration/vibration.dart';
 import '../sensors/sensor_processor.dart';
 import '../database/database_helper.dart';
 import '../models/sensor_data.dart';
@@ -137,7 +139,11 @@ class SensorController extends GetxController {
       _latestAzimuth = event.eulerAngles.azimuth;
       _latestPitch = event.eulerAngles.pitch;
       _latestRoll = event.eulerAngles.roll;
-
+      // print(
+      //   'AZIMUTH: ${azimuth * 180 / math.pi} | '
+      //       'PITCH: ${pitch * 180 / math.pi} | '
+      //       'ROLL: ${roll * 180 / math.pi}',
+      // );
       pitch.value = _latestPitch * 180 / math.pi;
       roll.value = _latestRoll * 180 / math.pi;
 
@@ -242,6 +248,20 @@ class SensorController extends GetxController {
         z: event.z,
         timestamp: now,
       );
+<<<<<<< HEAD
+=======
+      sensorManager.onShake = () {
+        shakeCount.value++;
+        isShaking.value = true;
+        Vibration.vibrate(
+          duration: 200,
+          amplitude: 180,
+        );
+        Future.delayed(const Duration(milliseconds: 500), () {
+          isShaking.value = false;
+        });
+      };
+>>>>>>> 25d00bc (Improve bubble level and added sensor haptic feedback)
       if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
         _recordSample(
           SensorRecordModel(
