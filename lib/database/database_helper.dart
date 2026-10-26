@@ -103,6 +103,67 @@ class DatabaseHelper {
     return maps.map((m) => SessionModel.fromMap(m)).toList();
   }
 
+  /// Finds sessions that were left unfinalized (end_time is null) due to unexpected app shutdown
+  Future<List<SessionModel>> getOrphanedSessions() async {
+    final db = await database;
+    final maps = await db.query(
+      'sessions',
+      where: 'end_time IS NULL',
+      orderBy: 'start_time DESC',
+    );
+    return maps.map((m) => SessionModel.fromMap(m)).toList();
+  }
+
+  /// Recovers an orphaned session by inspecting its recorded samples and synthesizing end metadata
+  Future<SessionModel> recoverOrphanedSession(SessionModel session) async {
+    final db = await database;
+    final sessionId = session.id!;
+
+    final records = await db.query(
+      'sensor_records',
+      columns: ['time_offset_ms', 'sensor_type'],
+      where: 'session_id = ?',
+      whereArgs: [sessionId],
+      orderBy: 'time_offset_ms DESC',
+    );
+
+    if (records.isEmpty) {
+      final finalized = session.copyWith(
+        endTime: session.startTime,
+        durationMs: 0,
+        sampleCount: 0,
+      );
+      await updateSession(finalized);
+      return finalized;
+    }
+
+    final totalCount = records.length;
+    final maxOffsetMs = (records.first['time_offset_ms'] as num?)?.toInt() ?? 0;
+    final calculatedEndTime = session.startTime.add(Duration(milliseconds: maxOffsetMs));
+
+    // Extract unique recorded sensor types
+    final distinctSensors = records
+        .map((r) => r['sensor_type']?.toString())
+        .whereType<String>()
+        .toSet()
+        .toList();
+    distinctSensors.sort();
+
+    final capturedTypes = distinctSensors.isNotEmpty
+        ? distinctSensors.join(', ')
+        : session.sensorTypes;
+
+    final finalized = session.copyWith(
+      endTime: calculatedEndTime,
+      durationMs: maxOffsetMs,
+      sampleCount: totalCount,
+      sensorTypes: capturedTypes,
+    );
+
+    await updateSession(finalized);
+    return finalized;
+  }
+
   Future<SessionModel?> getSessionById(int id) async {
     final db = await database;
     final maps = await db.query(

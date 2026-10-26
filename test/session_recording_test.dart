@@ -3,6 +3,7 @@ import 'package:sensora/models/sensor_data.dart';
 import 'package:sensora/models/sensor_record_model.dart';
 import 'package:sensora/models/session_model.dart';
 import 'package:sensora/sensors/sensor_processor.dart';
+import 'package:sensora/controllers/sensor_controller.dart';
 
 void main() {
   group('SessionModel Tests', () {
@@ -138,6 +139,13 @@ void main() {
 
       // Event at t = 105 ms -> allowed (>= 100ms)
       expect(limiter.shouldSample('accel', 105, intervalMs), isTrue);
+    });
+  });
+
+  group('Safety Caps & Limits Tests', () {
+    test('Safety threshold configuration values', () {
+      expect(SensorController.maxRecordingDuration, const Duration(hours: 1));
+      expect(SensorController.maxSampleLimit, 150000);
     });
   });
 }
