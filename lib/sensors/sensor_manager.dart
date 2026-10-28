@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
-
+import 'package:pedometer/pedometer.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_rotation_sensor/flutter_rotation_sensor.dart';
 import 'package:light/light.dart';
@@ -17,7 +17,7 @@ class SensorManager {
   StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
   StreamSubscription<OrientationEvent>? _orientationSubscription;
   StreamSubscription<CompassEvent>? _compassSubscription;
-
+  StreamSubscription<StepCount>? _stepSubscription;
   StreamSubscription<int>? _lightSubscription;
   StreamSubscription<int>? _proximitySubscription;
 
@@ -33,7 +33,7 @@ class SensorManager {
   Function(MagnetometerEvent)? onMagnetometer;
   Function(OrientationEvent)? onOrientation;
   Function(double)? onCompass;
-
+  Function(StepCount)? onStepCount;
   Function(double)? onLight;
   Function(bool)? onProximity;
   Function()? onShake;
@@ -89,7 +89,15 @@ class SensorManager {
         RotationSensor.orientationStream.listen((event) {
           onOrientation?.call(event);
         });
-
+    _stepSubscription = Pedometer.stepCountStream.listen(
+          (event) {
+        print('STEP COUNT: ${event.steps}');
+        onStepCount?.call(event);
+      },
+      onError: (error) {
+        print('STEP COUNTER ERROR: $error');
+      },
+    );
     // Compass
     _compassSubscription =
         FlutterCompass.events?.listen((event) {
@@ -128,7 +136,7 @@ class SensorManager {
     _magnetometerSubscription?.cancel();
     _orientationSubscription?.cancel();
     _compassSubscription?.cancel();
-
+    _stepSubscription?.cancel();
     _lightSubscription?.cancel();
     _proximitySubscription?.cancel();
   }

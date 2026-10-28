@@ -45,11 +45,11 @@ dependencies:
   proximity_sensor: ^2.0.0
   light: ^5.0.0
   flutter_compass: ^0.8.1
-<<<<<<< HEAD
   flutter_local_notifications: ^22.3.3
-=======
   vibration: ^3.2.1
->>>>>>> 25d00bc (Improve bubble level and added sensor haptic feedback)
+  pedometer: ^4.2.0
+  permission_handler: ^13.0.2
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:

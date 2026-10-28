@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:vibration/vibration.dart';
 import '../sensors/sensor_processor.dart';
@@ -13,7 +11,8 @@ import '../models/session_model.dart';
 import '../sensors/sensor_manager.dart';
 import '../services/export_service.dart';
 import '../services/notification_service.dart';
-
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 class SensorController extends GetxController {
   final SensorManager sensorManager = SensorManager();
 
@@ -21,6 +20,8 @@ class SensorController extends GetxController {
   // ROTATION, ORIENTATION & TILT
   // --------------------------------------------------
   final RxBool isLowPassFilterEnabled = false.obs;
+  int? _todayStepBaseline;
+  String? _stepBaselineDate;
 
   final Rx<SamplingRate> selectedSamplingRate =
       SamplingRate.standard.obs;
@@ -38,10 +39,10 @@ class SensorController extends GetxController {
   final RxDouble roll = 0.0.obs;
   final RxDouble light = 0.0.obs;
   final RxBool proximity = false.obs;
-
+  final RxInt stepCount = 0.obs;
   final RxDouble bubbleX = 0.0.obs;
   final RxDouble bubbleY = 0.0.obs;
-
+  late SharedPreferences _prefs;
   // --------------------------------------------------
   // CURRENT SENSOR VALUES
   // --------------------------------------------------
@@ -125,7 +126,39 @@ class SensorController extends GetxController {
       stopRecording(autoStopReason: 'Max sample capacity (150,000) reached');
     }
   }
+  Future<void> _initializeStepCounter() async {
+    _prefs = await SharedPreferences.getInstance();
 
+    final now = DateTime.now();
+    final today = '${now.year}-${now.month}-${now.day}';
+
+    _stepBaselineDate = _prefs.getString('step_baseline_date');
+
+    if (_stepBaselineDate == today) {
+      _todayStepBaseline = _prefs.getInt('step_baseline');
+    } else {
+      // New day — baseline will be set
+      // when the first pedometer event arrives.
+      _todayStepBaseline = null;
+    }
+  }
+  Future<void> _initializeSensors() async {
+    await _initializeStepCounter();
+
+    final status = await Permission.activityRecognition.request();
+
+    debugPrint(
+      'Activity Recognition permission: $status',
+    );
+
+    if (status.isGranted) {
+      sensorManager.startSensors();
+    } else {
+      debugPrint(
+        'Activity Recognition permission denied',
+      );
+    }
+  }
   // --------------------------------------------------
   // INITIALIZATION
   // --------------------------------------------------
@@ -168,7 +201,67 @@ class SensorController extends GetxController {
         );
       }
     };
+    //Steps Listener
+    sensorManager.onStepCount = (event) async {
+      final now = DateTime.now();
+      final today = '${now.year}-${now.month}-${now.day}';
 
+      // New day
+      if (_stepBaselineDate != today) {
+        _stepBaselineDate = today;
+        _todayStepBaseline = event.steps;
+
+        await _prefs.setString(
+          'step_baseline_date',
+          today,
+        );
+
+        await _prefs.setInt(
+          'step_baseline',
+          event.steps,
+        );
+
+        final todaySteps =
+        math.max(0, event.steps - _todayStepBaseline!);
+
+        stepCount.value = todaySteps;
+
+        print("New day detected");
+        print("Today's baseline: ${event.steps}");
+
+        return;
+      }
+
+      // First step event after installing the app
+      // or if today's baseline doesn't exist
+      if (_todayStepBaseline == null) {
+        _todayStepBaseline = event.steps;
+
+        await _prefs.setString(
+          'step_baseline_date',
+          today,
+        );
+
+        await _prefs.setInt(
+          'step_baseline',
+          event.steps,
+        );
+
+        stepCount.value = 0;
+
+        print("Today's baseline: ${event.steps}");
+
+        return;
+      }
+
+      // Today's steps
+      final todaySteps = event.steps - _todayStepBaseline!;
+
+      stepCount.value = todaySteps;
+
+      print("Total steps: ${event.steps}");
+      print("Today's steps: $todaySteps");
+    };
     //Compass Listener
     sensorManager.onCompass = (heading) {
       azimuth.value = heading;
@@ -248,8 +341,7 @@ class SensorController extends GetxController {
         z: event.z,
         timestamp: now,
       );
-<<<<<<< HEAD
-=======
+
       sensorManager.onShake = () {
         shakeCount.value++;
         isShaking.value = true;
@@ -261,7 +353,7 @@ class SensorController extends GetxController {
           isShaking.value = false;
         });
       };
->>>>>>> 25d00bc (Improve bubble level and added sensor haptic feedback)
+
       if (isRecording.value && _activeSession?.id != null && _sessionStartTime != null) {
         _recordSample(
           SensorRecordModel(
@@ -335,7 +427,7 @@ class SensorController extends GetxController {
     };
 
     // Start hardware sensors
-    sensorManager.startSensors();
+    _initializeSensors();
 
     // Start controlled UI timer
     _startUiTimer();

@@ -59,6 +59,10 @@ class SensorToolsScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             _buildProtractorCard(),
+
+            const SizedBox(height: 16,),
+
+            _buildStepCounterCard(),
           ],
         ),
       ),
@@ -287,6 +291,7 @@ class SensorToolsScreen extends StatelessWidget {
               ),
             ),
           ),
+
         ],
       ),
     );
@@ -348,7 +353,177 @@ class SensorToolsScreen extends StatelessWidget {
       ),
     );
   }
+  Widget _buildStepCounterCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.black.withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.05),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.directions_walk_rounded,
+                  size: 24,
+                ),
+              ),
 
+              const SizedBox(width: 12),
+
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Step Counter',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      "Today's activity",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Live indicator
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F7EE),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.circle,
+                      size: 7,
+                      color: Colors.green,
+                    ),
+                    SizedBox(width: 5),
+                    Text(
+                      'LIVE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 28),
+
+          // Step count
+          Center(
+            child: Obx(
+                  () => Text(
+                '${controller.stepCount.value}',
+                style: const TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Center(
+            child: Text(
+              "steps today",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Bottom information
+          // Container(
+          //   width: double.infinity,
+          //   padding: const EdgeInsets.symmetric(
+          //     horizontal: 16,
+          //     vertical: 14,
+          //   ),
+          //   decoration: BoxDecoration(
+          //     color: const Color(0xFFF7F7F7),
+          //     borderRadius: BorderRadius.circular(16),
+          //   ),
+          //   child: Row(
+          //     children: [
+          //       const Icon(
+          //         Icons.today_rounded,
+          //         size: 18,
+          //         color: Colors.grey,
+          //       ),
+          //       const SizedBox(width: 8),
+          //       const Expanded(
+          //         child: Text(
+          //           'Daily step count',
+          //           style: TextStyle(
+          //             fontSize: 12,
+          //             color: Colors.grey,
+          //             fontWeight: FontWeight.w600,
+          //           ),
+          //         ),
+          //       ),
+          //       Obx(
+          //             () => Text(
+          //           '${controller.stepCount.value} steps',
+          //           style: const TextStyle(
+          //             fontSize: 12,
+          //             fontWeight: FontWeight.w700,
+          //           ),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
+        ],
+      ),
+    );
+  }
   Widget _angleBox({
     required String label,
     required double value,
